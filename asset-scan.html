@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="자산스캔">
+<title>자산 QR 스캔</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2540;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --border: rgba(59,130,246,0.2);
+    --glow: 0 0 20px rgba(59,130,246,0.3);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,15,30,0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: env(safe-area-inset-top, 44px) 20px 14px;
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--accent2);
+    font-weight: 600;
+  }
+
+  /* ── Screens ── */
+  .screen { display: none; padding: 20px; padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px); }
+  .screen.active { display: block; }
+
+  /* ── Step indicator ── */
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 28px;
+  }
+
+  .step-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    transition: all 0.3s;
+    flex-shrink: 0;
+  }
+
+  .step-dot.done { background: var(--success); border-color: var(--success); color: #fff; }
+  .step-dot.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: var(--glow); }
+
+  .step-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .step-line.done { background: var(--success); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+
+  .question {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 24px;
+    letter-spacing: -0.4px;
+  }
+
+  .question span {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ── Dropdowns ── */
+  .dropdown-group { display: flex; flex-direction: column; gap: 12px; }
+
+  .dropdown-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  .dropdown-wrapper {
+    position: relative;
+  }
+
+  select {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 44px 14px 16px;
+    font-size: 15px;
+    color: var(--text);
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  }
+
+  select option { background: #1e2d4a; color: var(--text); }
+
+  .dropdown-arrow {
+    position: absolute;
+    right: 14px; top: 50%;
+    transform: translateY(-50%);
+    width: 20px; height: 20px;
+    pointer-events: none;
+    color: var(--text2);
+  }
+
+  /* ── Location preview ── */
+  .location-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    font-size: 14px;
+  }
+
+  .loc-chip {
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.3);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 13px;
+    color: var(--accent2);
+    font-weight: 500;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: -0.2px;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(59,130,246,0.4);
+  }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-success {
+    background: linear-gradient(135deg, #059669 0%, var(--success) 100%);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(16,185,129,0.4);
+  }
+
+  .btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, var(--danger) 100%);
+    color: #fff;
+  }
+
+  .btn-sm {
+    width: auto;
+    padding: 8px 16px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+
+  /* ── Camera screen ── */
+  #screen-scan { padding: 0; }
+
+  .scan-header {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    padding: calc(env(safe-area-inset-top, 44px) + 10px) 20px 16px;
+    background: linear-gradient(to bottom, rgba(10,15,30,0.95) 0%, transparent 100%);
+  }
+
+  .scan-location-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(59,130,246,0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(59,130,246,0.4);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+
+  .scan-location-pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .scan-container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: -webkit-fill-available;
+    background: #000;
+    overflow: hidden;
+  }
+
+  #camera-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .scan-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .scan-frame {
+    width: 220px; height: 220px;
+    position: relative;
+  }
+
+  .scan-frame::before, .scan-frame::after,
+  .scan-frame .corner-tl, .scan-frame .corner-tr,
+  .scan-frame .corner-bl, .scan-frame .corner-br {
+    position: absolute;
+    width: 30px; height: 30px;
+    border-color: rgba(255,255,255,0.9);
+    border-style: solid;
+  }
+
+  .scan-frame .corner-tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .scan-frame .corner-tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+  .scan-frame .corner-bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+  .scan-frame .corner-br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  .scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(59,130,246,0.8), var(--accent2), rgba(59,130,246,0.8), transparent);
+    animation: scanLine 2s linear infinite;
+  }
+
+  @keyframes scanLine {
+    0% { top: 0; }
+    100% { top: 100%; }
+  }
+
+  .scan-hint {
+    margin-top: 24px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    text-align: center;
+    font-weight: 500;
+  }
+
+  /* ── Scan footer ── */
+  .scan-footer {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 20px 20px calc(env(safe-area-inset-bottom, 20px) + 20px);
+    background: linear-gradient(to top, rgba(10,15,30,0.97) 0%, transparent 100%);
+    pointer-events: all;
+  }
+
+  .scan-count {
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  .scan-count .num {
+    font-size: 44px;
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(135deg, #fff, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .scan-count .label {
+    font-size: 12px;
+    color: var(--text2);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Scanned list ── */
+  .scanned-list {
+    max-height: 140px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .scan-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(16,185,129,0.12);
+    border: 1px solid rgba(16,185,129,0.25);
+    border-radius: 10px;
+    padding: 8px 12px;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .scan-item .asset-no {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--success);
+    font-family: 'SF Mono', 'Courier New', monospace;
+  }
+
+  .scan-item .scan-seq {
+    font-size: 11px;
+    color: var(--text2);
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 2px 7px;
+    font-weight: 600;
+  }
+
+  .del-btn {
+    background: rgba(239,68,68,0.15);
+    border: none;
+    border-radius: 6px;
+    color: var(--danger);
+    font-size: 14px;
+    padding: 2px 8px;
+    cursor: pointer;
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 44px) + 60px);
+    left: 50%; transform: translateX(-50%);
+    background: rgba(16,185,129,0.95);
+    color: #fff;
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+    backdrop-filter: blur(10px);
+  }
+
+  .toast.show { opacity: 1; }
+  .toast.error { background: rgba(239,68,68,0.95); }
+  .toast.warning { background: rgba(245,158,11,0.95); }
+
+  /* ── Summary screen ── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text2);
+    font-weight: 500;
+  }
+
+  .summary-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .summary-list-header {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .summary-list-body {
+    max-height: 240px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .summary-row:last-child { border-bottom: none; }
+
+  .summary-row .idx {
+    color: var(--text2);
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .summary-row .asset {
+    font-family: 'SF Mono', 'Courier New', monospace;
+    font-weight: 700;
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .summary-row .time {
+    font-size: 11px;
+    color: var(--text2);
+  }
+
+  /* ── Misc ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+
+  .mt-3 { margin-top: 12px; }
+  .mt-4 { margin-top: 16px; }
+  .text-center { text-align: center; }
+  .text-sm { font-size: 13px; color: var(--text2); }
+
+  canvas { display: none; }
+</style>
+</head>
+<body>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+<canvas id="qr-canvas"></canvas>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-inner">
+    <h1>📦 자산 QR 스캔</h1>
+    <div class="header-badge" id="header-location-badge">위치 미설정</div>
+  </div>
+</div>
+
+<!-- ───── SCREEN 1: 위치 선택 ───── -->
+<div class="screen active" id="screen-location">
+  <!-- Step indicator -->
+  <div class="steps">
+    <div class="step-dot active" id="sd1">1</div>
+    <div class="step-line" id="sl1"></div>
+    <div class="step-dot" id="sd2">2</div>
+    <div class="step-line" id="sl2"></div>
+    <div class="step-dot" id="sd3">3</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Step 1</div>
+    <div class="question">📍 <span>이 장소는 어디인가요?</span></div>
+
+    <div class="dropdown-group">
+      <div>
+        <div class="dropdown-label">🏢 건물명</div>
+        <div class="dropdown-wrapper">
+          <select id="sel-building" onchange="onBuildingChange()">
+            <option value="">건물을 선택하세요</option>
+          </select>
+          <svg class="dropdown-arrow" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+      </div>
+
+      <div>
+        <div class="dropdown-label">🪜 층수</div>
+        <div class="dropdown-wrapper">
+          <select id="sel-floor" disabled>
+            <option value="">먼저 건물을 선택하세요</option>
+          </select>
+          <svg class="dropdown-arrow" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+      </div>
+
+      <div>
+        <div class="dropdown-label">🚪 장소</div>
+        <div class="dropdown-wrapper">
+          <select id="sel-room" disabled>
+            <option value="">먼저 건물을 선택하세요</option>
+          </select>
+          <svg class="dropdown-arrow" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="card" id="location-preview-card" style="display:none">
+    <div class="card-title">선택된 위치</div>
+    <div class="location-preview" id="location-preview">
+      <span class="loc-chip" id="prev-building">-</span>
+      <span style="color:var(--text2)">›</span>
+      <span class="loc-chip" id="prev-floor">-</span>
+      <span style="color:var(--text2)">›</span>
+      <span class="loc-chip" id="prev-room">-</span>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="goToScan()" id="btn-go-scan" disabled>
+    📷 스캔 시작하기
+  </button>
+</div>
+
+<!-- ───── SCREEN 2: QR 스캔 ───── -->
+<div class="screen" id="screen-scan">
+  <div class="scan-container">
+    <video id="camera-video" playsinline autoplay muted></video>
+
+    <!-- Top overlay -->
+    <div class="scan-header">
+      <div class="scan-location-pill">
+        <div class="dot"></div>
+        <span id="scan-location-text">위치 미설정</span>
+      </div>
+    </div>
+
+    <!-- Center frame -->
+    <div class="scan-overlay">
+      <div class="scan-frame">
+        <div class="corner-tl"></div>
+        <div class="corner-tr"></div>
+        <div class="corner-bl"></div>
+        <div class="corner-br"></div>
+        <div class="scan-line"></div>
+      </div>
+      <div class="scan-hint">QR 코드를 프레임 안에 위치시키세요</div>
+    </div>
+
+    <!-- Bottom panel -->
+    <div class="scan-footer">
+      <div class="scan-count">
+        <div class="num" id="scan-count-num">0</div>
+        <div class="label">스캔된 자산</div>
+      </div>
+
+      <div class="scanned-list" id="scanned-list"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" style="flex:1" onclick="goBack()">← 위치변경</button>
+        <button class="btn btn-success" style="flex:2" onclick="goToSummary()">완료 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───── SCREEN 3: 요약 & 저장 ───── -->
+<div class="screen" id="screen-summary">
+  <div class="steps">
+    <div class="step-dot done" id="sd1b">✓</div>
+    <div class="step-line done" id="sl1b"></div>
+    <div class="step-dot done" id="sd2b">✓</div>
+    <div class="step-line done" id="sl2b"></div>
+    <div class="step-dot active" id="sd3b">3</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">스캔 완료</div>
+    <div class="question">📊 결과를 <span>저장하세요</span></div>
+
+    <div class="location-preview" style="margin-bottom:0">
+      <span style="font-size:12px;color:var(--text2)">위치:</span>
+      <span class="loc-chip" id="sum-building">-</span>
+      <span style="color:var(--text2)">›</span>
+      <span class="loc-chip" id="sum-floor">-</span>
+      <span style="color:var(--text2)">›</span>
+      <span class="loc-chip" id="sum-room">-</span>
+    </div>
+  </div>
+
+  <div class="summary-grid">
+    <div class="stat-card">
+      <div class="stat-num" id="sum-total" style="color:var(--accent2)">0</div>
+      <div class="stat-label">총 스캔 수</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="sum-time" style="color:var(--success); font-size:24px;">-</div>
+      <div class="stat-label">스캔 시간</div>
+    </div>
+  </div>
+
+  <div class="summary-list">
+    <div class="summary-list-header">스캔된 자산 목록</div>
+    <div class="summary-list-body" id="summary-list-body"></div>
+  </div>
+
+  <button class="btn btn-success" onclick="exportExcel()" style="margin-bottom:10px">
+    📥 엑셀로 저장 (.xlsx)
+  </button>
+  <button class="btn btn-secondary" onclick="scanMore()">
+    ➕ 같은 장소에서 추가 스캔
+  </button>
+  <div class="divider"></div>
+  <button class="btn btn-danger" onclick="resetAll()">
+    🔄 처음부터 다시 시작
+  </button>
+</div>
+
+<script>
+// ── State ──
+let locationData = null;
+let selectedBuilding = null;
+let selectedFloor = null;
+let selectedRoom = null;
+let scannedAssets = [];
+let scanStartTime = null;
+let stream = null;
+let scanInterval = null;
+let lastScanned = null;
+let lastScannedTime = 0;
+
+// ── Load locations.json (embedded fallback) ──
+const LOCATION_DATA_EMBEDDED = {
+  "buildings": [
+    {
+      "name": "본관",
+      "floors": ["1층", "2층", "3층", "4층", "5층"],
+      "rooms": ["로비", "회의실A", "회의실B", "사무실", "창고", "기계실", "전기실", "화장실"]
+    },
+    {
+      "name": "별관",
+      "floors": ["1층", "2층", "3층"],
+      "rooms": ["로비", "회의실", "사무실", "창고", "화장실"]
+    },
+    {
+      "name": "동관",
+      "floors": ["1층", "2층", "3층", "4층"],
+      "rooms": ["로비", "강당", "회의실", "사무실", "창고", "기계실", "화장실"]
+    },
+    {
+      "name": "서관",
+      "floors": ["지하1층", "1층", "2층"],
+      "rooms": ["주차장", "로비", "창고", "기계실", "전기실", "화장실"]
+    }
+  ]
+};
+
+async function loadLocationData() {
+  try {
+    const res = await fetch('locations.json');
+    locationData = await res.json();
+  } catch (e) {
+    locationData = LOCATION_DATA_EMBEDDED;
+  }
+  populateBuildingDropdown();
+}
+
+function populateBuildingDropdown() {
+  const sel = document.getElementById('sel-building');
+  sel.innerHTML = '<option value="">건물을 선택하세요</option>';
+  locationData.buildings.forEach((b, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = b.name;
+    sel.appendChild(opt);
+  });
+}
+
+function onBuildingChange() {
+  const idx = document.getElementById('sel-building').value;
+  const selFloor = document.getElementById('sel-floor');
+  const selRoom = document.getElementById('sel-room');
+
+  selFloor.disabled = true;
+  selRoom.disabled = true;
+  selFloor.innerHTML = '<option value="">층수를 선택하세요</option>';
+  selRoom.innerHTML = '<option value="">장소를 선택하세요</option>';
+
+  if (idx === '') {
+    selectedBuilding = null;
+    updateLocationPreview();
+    return;
+  }
+
+  const building = locationData.buildings[idx];
+  selectedBuilding = building.name;
+
+  building.floors.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f;
+    opt.textContent = f;
+    selFloor.appendChild(opt);
+  });
+
+  building.rooms.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r;
+    opt.textContent = r;
+    selRoom.appendChild(opt);
+  });
+
+  selFloor.disabled = false;
+  selRoom.disabled = false;
+
+  selFloor.onchange = () => { selectedFloor = selFloor.value || null; updateLocationPreview(); };
+  selRoom.onchange = () => { selectedRoom = selRoom.value || null; updateLocationPreview(); };
+
+  selectedFloor = null;
+  selectedRoom = null;
+  updateLocationPreview();
+}
+
+function updateLocationPreview() {
+  const card = document.getElementById('location-preview-card');
+  const btn = document.getElementById('btn-go-scan');
+
+  if (selectedBuilding && selectedFloor && selectedRoom) {
+    card.style.display = 'block';
+    document.getElementById('prev-building').textContent = selectedBuilding;
+    document.getElementById('prev-floor').textContent = selectedFloor;
+    document.getElementById('prev-room').textContent = selectedRoom;
+    btn.disabled = false;
+    document.getElementById('header-location-badge').textContent = `${selectedBuilding} ${selectedFloor}`;
+  } else {
+    card.style.display = selectedBuilding ? 'block' : 'none';
+    if (selectedBuilding) {
+      document.getElementById('prev-building').textContent = selectedBuilding;
+      document.getElementById('prev-floor').textContent = selectedFloor || '?';
+      document.getElementById('prev-room').textContent = selectedRoom || '?';
+    }
+    btn.disabled = true;
+  }
+}
+
+// ── Navigation ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+async function goToScan() {
+  document.getElementById('scan-location-text').textContent =
+    `${selectedBuilding} · ${selectedFloor} · ${selectedRoom}`;
+  showScreen('screen-scan');
+  scanStartTime = new Date();
+  await startCamera();
+  startQRScan();
+}
+
+function goBack() {
+  stopCamera();
+  stopQRScan();
+  showScreen('screen-location');
+}
+
+function goToSummary() {
+  stopCamera();
+  stopQRScan();
+  renderSummary();
+  showScreen('screen-summary');
+}
+
+function scanMore() {
+  showScreen('screen-scan');
+  scanStartTime = new Date();
+  startCamera().then(() => startQRScan());
+}
+
+function resetAll() {
+  scannedAssets = [];
+  selectedBuilding = null;
+  selectedFloor = null;
+  selectedRoom = null;
+  scanStartTime = null;
+  document.getElementById('sel-building').value = '';
+  document.getElementById('sel-floor').innerHTML = '<option value="">먼저 건물을 선택하세요</option>';
+  document.getElementById('sel-room').innerHTML = '<option value="">먼저 건물을 선택하세요</option>';
+  document.getElementById('sel-floor').disabled = true;
+  document.getElementById('sel-room').disabled = true;
+  document.getElementById('location-preview-card').style.display = 'none';
+  document.getElementById('btn-go-scan').disabled = true;
+  document.getElementById('header-location-badge').textContent = '위치 미설정';
+  document.getElementById('scanned-list').innerHTML = '';
+  document.getElementById('scan-count-num').textContent = '0';
+  showScreen('screen-location');
+}
+
+// ── Camera ──
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    document.getElementById('camera-video').srcObject = stream;
+  } catch (e) {
+    showToast('카메라 접근 권한이 필요합니다', 'error');
+  }
+}
+
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+}
+
+// ── QR Scanning ──
+function startQRScan() {
+  const video = document.getElementById('camera-video');
+  const canvas = document.getElementById('qr-canvas');
+  const ctx = canvas.getContext('2d');
+
+  scanInterval = setInterval(() => {
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: 'dontInvert'
+    });
+    if (code && code.data) {
+      const now = Date.now();
+      if (code.data !== lastScanned || now - lastScannedTime > 2000) {
+        lastScanned = code.data;
+        lastScannedTime = now;
+        onQRDetected(code.data);
+      }
+    }
+  }, 200);
+}
+
+function stopQRScan() {
+  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+}
+
+function onQRDetected(data) {
+  // 중복 체크 (같은 세션 내)
+  if (scannedAssets.find(a => a.assetNo === data)) {
+    showToast(`⚠️ 이미 스캔됨: ${data}`, 'warning');
+    return;
+  }
+
+  const entry = {
+    seq: scannedAssets.length + 1,
+    assetNo: data,
+    building: selectedBuilding,
+    floor: selectedFloor,
+    room: selectedRoom,
+    scannedAt: new Date().toLocaleString('ko-KR')
+  };
+
+  scannedAssets.push(entry);
+  updateScanUI(entry);
+  vibrate();
+  showToast(`✅ ${data}`);
+}
+
+function updateScanUI(entry) {
+  const list = document.getElementById('scanned-list');
+  document.getElementById('scan-count-num').textContent = scannedAssets.length;
+
+  const item = document.createElement('div');
+  item.className = 'scan-item';
+  item.id = `item-${entry.seq}`;
+  item.innerHTML = `
+    <span class="asset-no">${entry.assetNo}</span>
+    <span class="scan-seq">#${entry.seq}</span>
+    <button class="del-btn" onclick="deleteAsset(${entry.seq})">✕</button>
+  `;
+  list.prepend(item);
+}
+
+function deleteAsset(seq) {
+  scannedAssets = scannedAssets.filter(a => a.seq !== seq);
+  const el = document.getElementById(`item-${seq}`);
+  if (el) el.remove();
+  document.getElementById('scan-count-num').textContent = scannedAssets.length;
+  showToast('삭제되었습니다', 'warning');
+}
+
+function vibrate() {
+  if (navigator.vibrate) navigator.vibrate(50);
+}
+
+// ── Summary ──
+function renderSummary() {
+  document.getElementById('sum-building').textContent = selectedBuilding;
+  document.getElementById('sum-floor').textContent = selectedFloor;
+  document.getElementById('sum-room').textContent = selectedRoom;
+  document.getElementById('sum-total').textContent = scannedAssets.length;
+
+  const elapsed = scanStartTime ? Math.floor((new Date() - scanStartTime) / 1000) : 0;
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  document.getElementById('sum-time').textContent = `${m}분 ${s}초`;
+
+  const body = document.getElementById('summary-list-body');
+  body.innerHTML = '';
+  scannedAssets.forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'summary-row';
+    row.innerHTML = `
+      <span class="idx">${a.seq}</span>
+      <span class="asset">${a.assetNo}</span>
+      <span class="time">${a.scannedAt.split(' ')[1] || a.scannedAt}</span>
+    `;
+    body.appendChild(row);
+  });
+}
+
+// ── Excel Export ──
+function exportExcel() {
+  if (scannedAssets.length === 0) {
+    showToast('스캔된 자산이 없습니다', 'error');
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: 자산 목록
+  const wsData = [
+    ['순번', '자산번호', '건물명', '층수', '장소', '스캔일시']
+  ];
+  scannedAssets.forEach(a => {
+    wsData.push([a.seq, a.assetNo, a.building, a.floor, a.room, a.scannedAt]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column widths
+  ws['!cols'] = [
+    { wch: 6 }, { wch: 20 }, { wch: 12 }, { wch: 8 }, { wch: 14 }, { wch: 22 }
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, '자산스캔결과');
+
+  // Sheet 2: 요약
+  const summaryDate = new Date().toLocaleString('ko-KR');
+  const ws2Data = [
+    ['항목', '내용'],
+    ['스캔 일시', summaryDate],
+    ['건물명', selectedBuilding],
+    ['층수', selectedFloor],
+    ['장소', selectedRoom],
+    ['총 스캔 수', scannedAssets.length],
+  ];
+  const ws2 = XLSX.utils.aoa_to_sheet(ws2Data);
+  ws2['!cols'] = [{ wch: 16 }, { wch: 24 }];
+  XLSX.utils.book_append_sheet(wb, ws2, '스캔정보');
+
+  // File name
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+  const fileName = `자산스캔_${selectedBuilding}_${selectedFloor}_${dateStr}.xlsx`;
+
+  XLSX.writeFile(wb, fileName);
+  showToast('📥 엑셀 저장 완료!');
+}
+
+// ── Toast ──
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── Init ──
+loadLocationData();
+</script>
+</body>
+</html>
