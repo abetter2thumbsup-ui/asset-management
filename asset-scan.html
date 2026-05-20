@@ -8,207 +8,145 @@
 <meta name="apple-mobile-web-app-title" content="자산스캔">
 <title>자산 QR 스캔</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 <style>
   :root {
-    --bg: #0a0f1e;
-    --surface: #111827;
-    --surface2: #1a2540;
-    --accent: #3b82f6;
-    --accent2: #06b6d4;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --text: #f1f5f9;
-    --text2: #94a3b8;
-    --border: rgba(59,130,246,0.2);
-    --glow: 0 0 20px rgba(59,130,246,0.3);
+    --bg: #0a0f1e; --surface: #111827; --surface2: #1a2540;
+    --accent: #3b82f6; --accent2: #06b6d4; --success: #10b981;
+    --warning: #f59e0b; --danger: #ef4444;
+    --text: #f1f5f9; --text2: #94a3b8; --border: rgba(59,130,246,0.2);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  body {
-    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-    overflow-x: hidden;
-  }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
   .header {
     position: sticky; top: 0; z-index: 100;
-    background: rgba(10,15,30,0.9);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(10,15,30,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
     padding: env(safe-area-inset-top, 44px) 20px 14px;
   }
   .header-inner { display: flex; align-items: center; justify-content: space-between; }
-  .header h1 {
-    font-size: 18px; font-weight: 700; letter-spacing: -0.3px;
-    background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  }
-  .header-badge {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 20px; padding: 4px 12px; font-size: 12px;
-    color: var(--accent2); font-weight: 600;
-  }
+  .header h1 { font-size: 18px; font-weight: 700; color: #fff; }
+  .header-badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 12px; color: var(--accent2); font-weight: 600; }
+
   .screen { display: none; padding: 20px; padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px); }
   .screen.active { display: block; }
-  .steps { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
-  .step-dot {
-    width: 28px; height: 28px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700;
-    background: var(--surface2); border: 1px solid var(--border);
-    color: var(--text2); transition: all 0.3s; flex-shrink: 0;
-  }
-  .step-dot.done { background: var(--success); border-color: var(--success); color: #fff; }
-  .step-dot.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: var(--glow); }
-  .step-line { flex: 1; height: 1px; background: var(--border); }
-  .step-line.done { background: var(--success); }
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; padding: 20px; margin-bottom: 16px;
-  }
-  .card-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-  .question { font-size: 22px; font-weight: 700; line-height: 1.3; margin-bottom: 24px; letter-spacing: -0.4px; }
-  .question span { background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .dropdown-group { display: flex; flex-direction: column; gap: 12px; }
-  .dropdown-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; letter-spacing: 0.5px; }
-  .dropdown-wrapper { position: relative; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .question { font-size: 20px; font-weight: 700; margin-bottom: 20px; color: #fff; }
+  .question span { color: var(--accent2); }
+
+  .dropdown-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+  .dropdown-wrapper { position: relative; margin-bottom: 12px; }
   select {
     width: 100%; appearance: none; -webkit-appearance: none;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 12px; padding: 14px 44px 14px 16px;
-    font-size: 15px; color: var(--text); font-family: inherit;
-    cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 44px 14px 16px; font-size: 15px; color: var(--text); font-family: inherit; outline: none;
   }
-  select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
-  select option { background: #1e2d4a; color: var(--text); }
-  .dropdown-arrow {
-    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-    width: 20px; height: 20px; pointer-events: none; color: var(--text2);
-  }
-  .location-preview {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    padding: 12px 16px; background: var(--surface2);
-    border-radius: 10px; border: 1px solid var(--border); font-size: 14px;
-  }
-  .loc-chip {
-    background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3);
-    border-radius: 6px; padding: 2px 8px; font-size: 13px;
-    color: var(--accent2); font-weight: 500;
-  }
-  .btn {
-    width: 100%; padding: 16px; border: none; border-radius: 14px;
-    font-size: 16px; font-weight: 700; font-family: inherit;
-    cursor: pointer; transition: all 0.2s; letter-spacing: -0.2px;
-  }
-  .btn:active { transform: scale(0.97); }
-  .btn-primary { background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); color: #fff; box-shadow: 0 4px 20px rgba(59,130,246,0.4); }
+  select:focus { border-color: var(--accent); }
+  .chevron { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; pointer-events: none; color: var(--text2); }
+
+  .loc-preview { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 12px; background: var(--surface2); border-radius: 10px; border: 1px solid var(--border); }
+  .loc-chip { background: rgba(59,130,246,0.2); border: 1px solid rgba(59,130,246,0.35); border-radius: 6px; padding: 3px 10px; font-size: 13px; color: var(--accent2); font-weight: 600; }
+
+  .btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; }
+  .btn:active { opacity: 0.85; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
   .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-  .btn-success { background: linear-gradient(135deg, #059669 0%, var(--success) 100%); color: #fff; box-shadow: 0 4px 20px rgba(16,185,129,0.4); }
-  .btn-danger { background: linear-gradient(135deg, #dc2626 0%, var(--danger) 100%); color: #fff; }
+  .btn-success { background: linear-gradient(135deg, #059669, var(--success)); color: #fff; }
+  .btn-danger { background: linear-gradient(135deg, #dc2626, var(--danger)); color: #fff; }
   .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+  .mb { margin-bottom: 10px; }
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
 
   /* Scan screen */
   #screen-scan { padding: 0; }
-  .scan-container {
-    position: relative; width: 100%;
-    height: 100vh; height: -webkit-fill-available;
-    background: #000; overflow: hidden;
-  }
-  #camera-video { width: 100%; height: 100%; object-fit: cover; }
-  .scan-header {
+  .scan-wrap { position: relative; width: 100%; height: 100vh; height: -webkit-fill-available; background: #000; overflow: hidden; }
+  #cam { width: 100%; height: 100%; object-fit: cover; }
+
+  .scan-top {
     position: absolute; top: 0; left: 0; right: 0; z-index: 10;
-    padding: calc(env(safe-area-inset-top, 44px) + 10px) 20px 16px;
-    background: linear-gradient(to bottom, rgba(10,15,30,0.95) 0%, transparent 100%);
+    padding: calc(env(safe-area-inset-top, 44px) + 10px) 20px 20px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%);
   }
-  .scan-location-pill {
+  .loc-pill {
     display: inline-flex; align-items: center; gap: 6px;
-    background: rgba(59,130,246,0.2); backdrop-filter: blur(10px);
-    border: 1px solid rgba(59,130,246,0.4); border-radius: 20px;
-    padding: 6px 14px; font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 8px;
+    background: rgba(59,130,246,0.25); border: 1px solid rgba(59,130,246,0.5);
+    border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 600; color: #fff;
   }
-  .scan-location-pill .dot {
-    width: 6px; height: 6px; border-radius: 50%; background: var(--success);
-    animation: pulse 1.5s infinite;
-  }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-  .scan-overlay {
+  .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .scan-frame-wrap {
     position: absolute; inset: 0;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: none;
   }
-  .scan-frame { width: 220px; height: 220px; position: relative; }
-  .scan-frame .corner-tl,
-  .scan-frame .corner-tr,
-  .scan-frame .corner-bl,
-  .scan-frame .corner-br {
-    position: absolute; width: 30px; height: 30px;
-    border-color: rgba(255,255,255,0.9); border-style: solid;
+  .frame { width: 230px; height: 230px; position: relative; }
+  .c { position: absolute; width: 28px; height: 28px; border: 3px solid rgba(255,255,255,0.9); }
+  .c.tl { top:0;left:0; border-right:none; border-bottom:none; border-radius:4px 0 0 0; }
+  .c.tr { top:0;right:0; border-left:none; border-bottom:none; border-radius:0 4px 0 0; }
+  .c.bl { bottom:0;left:0; border-right:none; border-top:none; border-radius:0 0 0 4px; }
+  .c.br { bottom:0;right:0; border-left:none; border-top:none; border-radius:0 0 4px 0; }
+  .scan-bar {
+    position: absolute; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), var(--accent), transparent);
+    animation: bar 2s linear infinite;
   }
-  .scan-frame .corner-tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
-  .scan-frame .corner-tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
-  .scan-frame .corner-bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
-  .scan-frame .corner-br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
-  .scan-line {
-    position: absolute; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(59,130,246,0.8), var(--accent2), rgba(59,130,246,0.8), transparent);
-    animation: scanLine 2s linear infinite;
-  }
-  @keyframes scanLine { 0% { top: 0; } 100% { top: 100%; } }
-  .scan-hint { margin-top: 24px; font-size: 14px; color: rgba(255,255,255,0.7); text-align: center; font-weight: 500; }
-  .scan-footer {
+  @keyframes bar { 0%{top:0} 100%{top:100%} }
+  .frame-hint { margin-top: 20px; font-size: 14px; color: rgba(255,255,255,0.65); font-weight: 500; }
+
+  .scan-bottom {
     position: absolute; bottom: 0; left: 0; right: 0;
-    padding: 20px 20px calc(env(safe-area-inset-bottom, 20px) + 20px);
-    background: linear-gradient(to top, rgba(10,15,30,0.97) 0%, transparent 100%);
-    pointer-events: all;
+    padding: 16px 20px calc(env(safe-area-inset-bottom, 20px) + 16px);
+    background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, transparent 100%);
   }
-  .scan-count { text-align: center; margin-bottom: 12px; }
-  .scan-count .num {
-    font-size: 44px; font-weight: 800; line-height: 1;
-    background: linear-gradient(135deg, #fff, var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  }
-  .scan-count .label { font-size: 12px; color: var(--text2); font-weight: 500; letter-spacing: 0.5px; }
-  .scanned-list {
-    max-height: 140px; overflow-y: auto; -webkit-overflow-scrolling: touch;
-    margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;
-  }
-  .scan-item {
+  .count-row { text-align: center; margin-bottom: 10px; }
+  .count-num { font-size: 48px; font-weight: 800; color: #fff; line-height: 1; }
+  .count-label { font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 500; }
+
+  .items-list { max-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .s-item {
     display: flex; align-items: center; justify-content: space-between;
-    background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.25);
-    border-radius: 10px; padding: 8px 12px; animation: slideIn 0.3s ease;
+    background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3);
+    border-radius: 10px; padding: 8px 12px;
+    animation: slideIn 0.25s ease;
   }
-  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-  .scan-item .asset-no { font-size: 14px; font-weight: 700; color: var(--success); font-family: 'SF Mono', 'Courier New', monospace; }
-  .scan-item .scan-seq { font-size: 11px; color: var(--text2); background: var(--surface2); border-radius: 6px; padding: 2px 7px; font-weight: 600; }
-  .del-btn { background: rgba(239,68,68,0.15); border: none; border-radius: 6px; color: var(--danger); font-size: 14px; padding: 2px 8px; cursor: pointer; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
+  .s-item .anum { font-size: 14px; font-weight: 700; color: var(--success); font-family: monospace; }
+  .s-item .aseq { font-size: 11px; color: var(--text2); background: rgba(0,0,0,0.3); border-radius: 5px; padding: 2px 7px; }
+  .del { background: rgba(239,68,68,0.2); border: none; border-radius: 6px; color: var(--danger); font-size: 13px; padding: 3px 8px; cursor: pointer; }
+
+  /* Summary */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
+  .stat-n { font-size: 38px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+  .stat-l { font-size: 12px; color: var(--text2); }
+  .sum-list { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
+  .sum-list-h { padding: 11px 16px; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.7px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .sum-list-b { max-height: 240px; overflow-y: auto; }
+  .sum-row { display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--border); }
+  .sum-row:last-child { border-bottom: none; }
+  .sum-idx { font-size: 11px; color: var(--text2); font-weight: 600; text-align: center; }
+  .sum-asset { font-family: monospace; font-weight: 700; font-size: 14px; }
+  .sum-time { font-size: 11px; color: var(--text2); }
+
+  /* Toast */
   .toast {
-    position: fixed; top: calc(env(safe-area-inset-top, 44px) + 60px);
+    position: fixed; top: calc(env(safe-area-inset-top, 44px) + 56px);
     left: 50%; transform: translateX(-50%);
-    background: rgba(16,185,129,0.95); color: #fff; border-radius: 12px;
-    padding: 10px 20px; font-size: 14px; font-weight: 600; z-index: 999;
-    pointer-events: none; opacity: 0; transition: opacity 0.3s;
-    white-space: nowrap; backdrop-filter: blur(10px);
+    padding: 10px 20px; border-radius: 12px; font-size: 14px; font-weight: 600;
+    color: #fff; z-index: 999; pointer-events: none;
+    opacity: 0; transition: opacity 0.25s; white-space: nowrap;
+    backdrop-filter: blur(10px);
   }
   .toast.show { opacity: 1; }
-  .toast.error { background: rgba(239,68,68,0.95); }
-  .toast.warning { background: rgba(245,158,11,0.95); }
-  .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
-  .stat-num { font-size: 36px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
-  .stat-label { font-size: 12px; color: var(--text2); font-weight: 500; }
-  .summary-list { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
-  .summary-list-header { padding: 12px 16px; font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.7px; border-bottom: 1px solid var(--border); background: var(--surface2); }
-  .summary-list-body { max-height: 240px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .summary-row { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
-  .summary-row:last-child { border-bottom: none; }
-  .summary-row .idx { color: var(--text2); font-size: 11px; font-weight: 600; text-align: center; }
-  .summary-row .asset { font-family: 'SF Mono', 'Courier New', monospace; font-weight: 700; color: var(--text); font-size: 14px; }
-  .summary-row .time { font-size: 11px; color: var(--text2); }
-  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .toast.ok { background: rgba(16,185,129,0.95); }
+  .toast.warn { background: rgba(245,158,11,0.95); }
+  .toast.err { background: rgba(239,68,68,0.95); }
+
+  /* error box */
+  .err-box { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; font-size: 13px; color: #fca5a5; display: none; }
 </style>
 </head>
 <body>
@@ -218,386 +156,341 @@
 <div class="header">
   <div class="header-inner">
     <h1>📦 자산 QR 스캔</h1>
-    <div class="header-badge" id="header-location-badge">위치 미설정</div>
+    <div class="header-badge" id="hbadge">위치 미설정</div>
   </div>
 </div>
 
-<!-- SCREEN 1: 위치 선택 -->
-<div class="screen active" id="screen-location">
-  <div class="steps">
-    <div class="step-dot active">1</div>
-    <div class="step-line"></div>
-    <div class="step-dot">2</div>
-    <div class="step-line"></div>
-    <div class="step-dot">3</div>
-  </div>
+<!-- ── 화면1: 위치 선택 ── -->
+<div class="screen active" id="s1">
   <div class="card">
-    <div class="card-title">Step 1</div>
+    <div class="card-title">Step 1 / 3</div>
     <div class="question">📍 <span>이 장소는 어디인가요?</span></div>
-    <div class="dropdown-group">
-      <div>
-        <div class="dropdown-label">🏢 건물명</div>
-        <div class="dropdown-wrapper">
-          <select id="sel-building" onchange="onBuildingChange()">
-            <option value="">건물을 선택하세요</option>
-          </select>
-          <svg class="dropdown-arrow" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-        </div>
-      </div>
-      <div>
-        <div class="dropdown-label">🪜 층수</div>
-        <div class="dropdown-wrapper">
-          <select id="sel-floor" disabled>
-            <option value="">먼저 건물을 선택하세요</option>
-          </select>
-          <svg class="dropdown-arrow" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-        </div>
-      </div>
-      <div>
-        <div class="dropdown-label">🚪 장소</div>
-        <div class="dropdown-wrapper">
-          <select id="sel-room" disabled>
-            <option value="">먼저 건물을 선택하세요</option>
-          </select>
-          <svg class="dropdown-arrow" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-        </div>
-      </div>
+
+    <div class="dropdown-label">🏢 건물명</div>
+    <div class="dropdown-wrapper">
+      <select id="sel-b" onchange="onBuilding()"><option value="">건물을 선택하세요</option></select>
+      <svg class="chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+    </div>
+
+    <div class="dropdown-label">🪜 층수</div>
+    <div class="dropdown-wrapper">
+      <select id="sel-f" disabled><option value="">먼저 건물을 선택하세요</option></select>
+      <svg class="chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+    </div>
+
+    <div class="dropdown-label">🚪 장소</div>
+    <div class="dropdown-wrapper">
+      <select id="sel-r" disabled><option value="">먼저 건물을 선택하세요</option></select>
+      <svg class="chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
     </div>
   </div>
-  <div class="card" id="location-preview-card" style="display:none">
+
+  <div class="card" id="prev-card" style="display:none">
     <div class="card-title">선택된 위치</div>
-    <div class="location-preview">
-      <span class="loc-chip" id="prev-building">-</span>
+    <div class="loc-preview">
+      <span class="loc-chip" id="pB">-</span>
       <span style="color:var(--text2)">›</span>
-      <span class="loc-chip" id="prev-floor">-</span>
+      <span class="loc-chip" id="pF">-</span>
       <span style="color:var(--text2)">›</span>
-      <span class="loc-chip" id="prev-room">-</span>
+      <span class="loc-chip" id="pR">-</span>
     </div>
   </div>
-  <button class="btn btn-primary" onclick="goToScan()" id="btn-go-scan" disabled>📷 스캔 시작하기</button>
+
+  <button class="btn btn-primary" id="btn-start" onclick="goScan()" disabled>📷 스캔 시작하기</button>
 </div>
 
-<!-- SCREEN 2: 스캔 -->
-<div class="screen" id="screen-scan">
-  <div class="scan-container">
-    <video id="camera-video" playsinline autoplay muted></video>
-    <div class="scan-header">
-      <div class="scan-location-pill">
-        <div class="dot"></div>
-        <span id="scan-location-text">위치 미설정</span>
+<!-- ── 화면2: 스캔 ── -->
+<div class="screen" id="s2">
+  <div class="scan-wrap">
+    <video id="cam" playsinline autoplay muted></video>
+
+    <div class="scan-top">
+      <div class="loc-pill">
+        <div class="pulse-dot"></div>
+        <span id="scan-loc">-</span>
       </div>
     </div>
-    <div class="scan-overlay">
-      <div class="scan-frame">
-        <div class="corner-tl"></div>
-        <div class="corner-tr"></div>
-        <div class="corner-bl"></div>
-        <div class="corner-br"></div>
-        <div class="scan-line"></div>
+
+    <div class="scan-frame-wrap">
+      <div class="frame">
+        <div class="c tl"></div><div class="c tr"></div>
+        <div class="c bl"></div><div class="c br"></div>
+        <div class="scan-bar"></div>
       </div>
-      <div class="scan-hint">QR 코드를 프레임 안에 위치시키세요</div>
+      <div class="frame-hint">QR 코드를 프레임 안에 위치시키세요</div>
     </div>
-    <div class="scan-footer">
-      <div class="scan-count">
-        <div class="num" id="scan-count-num">0</div>
-        <div class="label">스캔된 자산</div>
+
+    <div class="scan-bottom">
+      <div class="count-row">
+        <div class="count-num" id="cnt">0</div>
+        <div class="count-label">스캔된 자산</div>
       </div>
-      <div class="scanned-list" id="scanned-list"></div>
+      <div class="items-list" id="ilist"></div>
       <div class="btn-row">
         <button class="btn btn-secondary" style="flex:1" onclick="goBack()">← 위치변경</button>
-        <button class="btn btn-success" style="flex:2" onclick="goToSummary()">완료 →</button>
+        <button class="btn btn-success" style="flex:2" onclick="goSummary()">완료 →</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- SCREEN 3: 요약 -->
-<div class="screen" id="screen-summary">
-  <div class="steps">
-    <div class="step-dot done">✓</div>
-    <div class="step-line done"></div>
-    <div class="step-dot done">✓</div>
-    <div class="step-line done"></div>
-    <div class="step-dot active">3</div>
-  </div>
+<!-- ── 화면3: 요약 ── -->
+<div class="screen" id="s3">
   <div class="card">
-    <div class="card-title">스캔 완료</div>
+    <div class="card-title">Step 3 / 3 · 스캔 완료</div>
     <div class="question">📊 결과를 <span>저장하세요</span></div>
-    <div class="location-preview" style="margin-bottom:0">
-      <span style="font-size:12px;color:var(--text2)">위치:</span>
-      <span class="loc-chip" id="sum-building">-</span>
+    <div class="loc-preview">
+      <span class="loc-chip" id="sB">-</span>
       <span style="color:var(--text2)">›</span>
-      <span class="loc-chip" id="sum-floor">-</span>
+      <span class="loc-chip" id="sF">-</span>
       <span style="color:var(--text2)">›</span>
-      <span class="loc-chip" id="sum-room">-</span>
+      <span class="loc-chip" id="sR">-</span>
     </div>
   </div>
-  <div class="summary-grid">
-    <div class="stat-card">
-      <div class="stat-num" id="sum-total" style="color:var(--accent2)">0</div>
-      <div class="stat-label">총 스캔 수</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num" id="sum-time" style="color:var(--success); font-size:24px;">-</div>
-      <div class="stat-label">스캔 시간</div>
-    </div>
+
+  <div class="grid2">
+    <div class="stat"><div class="stat-n" id="sTotal" style="color:var(--accent2)">0</div><div class="stat-l">총 스캔 수</div></div>
+    <div class="stat"><div class="stat-n" id="sTime" style="color:var(--success);font-size:22px">-</div><div class="stat-l">소요 시간</div></div>
   </div>
-  <div class="summary-list">
-    <div class="summary-list-header">스캔된 자산 목록</div>
-    <div class="summary-list-body" id="summary-list-body"></div>
+
+  <div class="sum-list">
+    <div class="sum-list-h">스캔된 자산 목록</div>
+    <div class="sum-list-b" id="sum-body"></div>
   </div>
-  <button class="btn btn-success" onclick="exportExcel()" style="margin-bottom:10px">📥 엑셀로 저장 (.xlsx)</button>
-  <button class="btn btn-secondary" onclick="scanMore()">➕ 같은 장소에서 추가 스캔</button>
+
+  <button class="btn btn-success mb" onclick="exportExcel()">📥 엑셀로 저장 (.xlsx)</button>
+  <button class="btn btn-secondary mb" onclick="scanMore()">➕ 같은 장소에서 추가 스캔</button>
   <div class="divider"></div>
   <button class="btn btn-danger" onclick="resetAll()">🔄 처음부터 다시 시작</button>
 </div>
 
 <script>
-// ── State ──
-const LOCATION_DATA = {
-  "buildings": [
-    { "name": "본관", "floors": ["1층","2층","3층","4층","5층"], "rooms": ["로비","회의실A","회의실B","사무실","창고","기계실","전기실","화장실"] },
-    { "name": "별관", "floors": ["1층","2층","3층"], "rooms": ["로비","회의실","사무실","창고","화장실"] },
-    { "name": "동관", "floors": ["1층","2층","3층","4층"], "rooms": ["로비","강당","회의실","사무실","창고","기계실","화장실"] },
-    { "name": "서관", "floors": ["지하1층","1층","2층"], "rooms": ["주차장","로비","창고","기계실","전기실","화장실"] }
+// ── 위치 데이터 ──
+const LOC = {
+  buildings: [
+    { name:"본관",   floors:["1층","2층","3층","4층","5층"],        rooms:["로비","회의실A","회의실B","사무실","창고","기계실","전기실","화장실"] },
+    { name:"별관",   floors:["1층","2층","3층"],                    rooms:["로비","회의실","사무실","창고","화장실"] },
+    { name:"동관",   floors:["1층","2층","3층","4층"],              rooms:["로비","강당","회의실","사무실","창고","기계실","화장실"] },
+    { name:"서관",   floors:["지하1층","1층","2층"],                rooms:["주차장","로비","창고","기계실","전기실","화장실"] }
   ]
 };
 
-let locationData = LOCATION_DATA;
-let selectedBuilding = null, selectedFloor = null, selectedRoom = null;
-let scannedAssets = [];
-let scanStartTime = null;
-let stream = null;
-let codeReader = null;
-let lastScanned = null;
-let lastScannedTime = 0;
+let bldg='', floor='', room='';
+let assets=[], startTime=null, stream=null, rafId=null;
+let lastCode='', lastTime=0;
 
-// locations.json 로드 시도
-async function loadLocationData() {
+// locations.json 외부 파일 있으면 덮어쓰기
+fetch('locations.json').then(r=>r.ok?r.json():null).then(d=>{ if(d&&d.buildings){ LOC.buildings=d.buildings; } populateBuilding(); }).catch(()=>{ populateBuilding(); });
+
+function populateBuilding() {
+  const s = document.getElementById('sel-b');
+  s.innerHTML = '<option value="">건물을 선택하세요</option>';
+  LOC.buildings.forEach((b,i) => { const o=document.createElement('option'); o.value=i; o.textContent=b.name; s.appendChild(o); });
+}
+
+function onBuilding() {
+  const idx = document.getElementById('sel-b').value;
+  const sf = document.getElementById('sel-f'), sr = document.getElementById('sel-r');
+  sf.disabled=true; sr.disabled=true;
+  sf.innerHTML='<option value="">층수를 선택하세요</option>';
+  sr.innerHTML='<option value="">장소를 선택하세요</option>';
+  floor=''; room='';
+  if(!idx){ bldg=''; updatePrev(); return; }
+  const b = LOC.buildings[idx];
+  bldg = b.name;
+  b.floors.forEach(f=>{ const o=document.createElement('option'); o.value=f; o.textContent=f; sf.appendChild(o); });
+  b.rooms.forEach(r=>{ const o=document.createElement('option'); o.value=r; o.textContent=r; sr.appendChild(o); });
+  sf.disabled=false; sr.disabled=false;
+  sf.onchange = ()=>{ floor=sf.value||''; updatePrev(); };
+  sr.onchange = ()=>{ room=sr.value||''; updatePrev(); };
+  updatePrev();
+}
+
+function updatePrev() {
+  const card = document.getElementById('prev-card');
+  card.style.display = bldg ? 'block' : 'none';
+  document.getElementById('pB').textContent = bldg||'-';
+  document.getElementById('pF').textContent = floor||'?';
+  document.getElementById('pR').textContent = room||'?';
+  document.getElementById('btn-start').disabled = !(bldg&&floor&&room);
+  if(bldg&&floor) document.getElementById('hbadge').textContent = bldg+' '+floor;
+}
+
+// ── 화면 전환 ──
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+async function goScan(){
+  document.getElementById('scan-loc').textContent = `${bldg} · ${floor} · ${room}`;
+  show('s2');
+  startTime = new Date();
+  await startCam();
+}
+
+function goBack(){ stopCam(); show('s1'); }
+
+function goSummary(){ stopCam(); renderSummary(); show('s3'); }
+
+function scanMore(){ show('s2'); startCam(); }
+
+function resetAll(){
+  assets=[]; bldg=floor=room=''; startTime=null;
+  document.getElementById('sel-b').value='';
+  ['sel-f','sel-r'].forEach(id=>{ const el=document.getElementById(id); el.innerHTML='<option>먼저 건물을 선택하세요</option>'; el.disabled=true; });
+  document.getElementById('prev-card').style.display='none';
+  document.getElementById('btn-start').disabled=true;
+  document.getElementById('hbadge').textContent='위치 미설정';
+  document.getElementById('ilist').innerHTML='';
+  document.getElementById('cnt').textContent='0';
+  show('s1');
+}
+
+// ── 카메라 + QR 스캔 ──
+async function startCam(){
   try {
-    const res = await fetch('locations.json');
-    if (res.ok) locationData = await res.json();
-  } catch(e) {}
-  populateBuildingDropdown();
-}
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
 
-function populateBuildingDropdown() {
-  const sel = document.getElementById('sel-building');
-  sel.innerHTML = '<option value="">건물을 선택하세요</option>';
-  locationData.buildings.forEach((b, i) => {
-    const opt = document.createElement('option');
-    opt.value = i; opt.textContent = b.name;
-    sel.appendChild(opt);
-  });
-}
-
-function onBuildingChange() {
-  const idx = document.getElementById('sel-building').value;
-  const selFloor = document.getElementById('sel-floor');
-  const selRoom = document.getElementById('sel-room');
-  selFloor.disabled = true; selRoom.disabled = true;
-  selFloor.innerHTML = '<option value="">층수를 선택하세요</option>';
-  selRoom.innerHTML = '<option value="">장소를 선택하세요</option>';
-  if (idx === '') { selectedBuilding = null; updatePreview(); return; }
-  const b = locationData.buildings[idx];
-  selectedBuilding = b.name;
-  b.floors.forEach(f => { const o = document.createElement('option'); o.value = f; o.textContent = f; selFloor.appendChild(o); });
-  b.rooms.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; selRoom.appendChild(o); });
-  selFloor.disabled = false; selRoom.disabled = false;
-  selFloor.onchange = () => { selectedFloor = selFloor.value || null; updatePreview(); };
-  selRoom.onchange = () => { selectedRoom = selRoom.value || null; updatePreview(); };
-  selectedFloor = null; selectedRoom = null;
-  updatePreview();
-}
-
-function updatePreview() {
-  const card = document.getElementById('location-preview-card');
-  const btn = document.getElementById('btn-go-scan');
-  card.style.display = selectedBuilding ? 'block' : 'none';
-  if (selectedBuilding) {
-    document.getElementById('prev-building').textContent = selectedBuilding;
-    document.getElementById('prev-floor').textContent = selectedFloor || '?';
-    document.getElementById('prev-room').textContent = selectedRoom || '?';
-  }
-  btn.disabled = !(selectedBuilding && selectedFloor && selectedRoom);
-  if (selectedBuilding && selectedFloor)
-    document.getElementById('header-location-badge').textContent = `${selectedBuilding} ${selectedFloor}`;
-}
-
-// ── Navigation ──
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
-
-async function goToScan() {
-  document.getElementById('scan-location-text').textContent = `${selectedBuilding} · ${selectedFloor} · ${selectedRoom}`;
-  showScreen('screen-scan');
-  scanStartTime = new Date();
-  await startCamera();
-}
-
-function goBack() {
-  stopCamera();
-  showScreen('screen-location');
-}
-
-function goToSummary() {
-  stopCamera();
-  renderSummary();
-  showScreen('screen-summary');
-}
-
-function scanMore() {
-  showScreen('screen-scan');
-  startCamera();
-}
-
-function resetAll() {
-  scannedAssets = [];
-  selectedBuilding = selectedFloor = selectedRoom = null;
-  scanStartTime = null;
-  document.getElementById('sel-building').value = '';
-  document.getElementById('sel-floor').innerHTML = '<option value="">먼저 건물을 선택하세요</option>';
-  document.getElementById('sel-room').innerHTML = '<option value="">먼저 건물을 선택하세요</option>';
-  document.getElementById('sel-floor').disabled = true;
-  document.getElementById('sel-room').disabled = true;
-  document.getElementById('location-preview-card').style.display = 'none';
-  document.getElementById('btn-go-scan').disabled = true;
-  document.getElementById('header-location-badge').textContent = '위치 미설정';
-  document.getElementById('scanned-list').innerHTML = '';
-  document.getElementById('scan-count-num').textContent = '0';
-  showScreen('screen-location');
-}
-
-// ── Camera + ZXing ──
-async function startCamera() {
-  try {
-    // 기존 스트림 정리
-    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-    if (codeReader) { codeReader.reset(); codeReader = null; }
-
-    // ZXing 코드 리더
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    codeReader = new ZXing.BrowserQRCodeReader(hints);
-
-    const videoEl = document.getElementById('camera-video');
-
-    // 후면 카메라 장치 ID 찾기
-    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-    let deviceId = undefined;
-    if (devices.length > 0) {
-      // 후면 카메라 우선
-      const back = devices.find(d => /back|rear|environment/i.test(d.label));
-      deviceId = back ? back.deviceId : devices[devices.length - 1].deviceId;
-    }
-
-    await codeReader.decodeFromVideoDevice(deviceId, videoEl, (result, err) => {
-      if (result) {
-        const data = result.getText();
-        const now = Date.now();
-        if (data !== lastScanned || now - lastScannedTime > 2000) {
-          lastScanned = data;
-          lastScannedTime = now;
-          onQRDetected(data);
-        }
-      }
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width:{ideal:1280}, height:{ideal:720} },
+      audio: false
     });
 
-    stream = videoEl.srcObject;
-  } catch(e) {
-    showToast('카메라 오류: ' + e.message, 'error');
+    const vid = document.getElementById('cam');
+    vid.srcObject = stream;
+    await new Promise(res => { vid.onloadedmetadata = res; });
+    vid.play();
+
+    startQR(vid);
+  } catch(e){
+    toast('카메라 오류: '+e.message, 'err');
     console.error(e);
   }
 }
 
-function stopCamera() {
-  if (codeReader) { try { codeReader.reset(); } catch(e){} codeReader = null; }
-  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+function stopCam(){
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
 }
 
-function onQRDetected(data) {
-  if (scannedAssets.find(a => a.assetNo === data)) {
-    showToast(`⚠️ 이미 스캔됨: ${data}`, 'warning');
-    return;
+function startQR(vid){
+  // BarcodeDetector (iOS 16+, Chrome) 우선
+  if(typeof BarcodeDetector !== 'undefined'){
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    const loop = async () => {
+      if(!stream) return;
+      try {
+        if(vid.readyState >= 2){
+          const barcodes = await detector.detect(vid);
+          if(barcodes.length > 0){
+            const code = barcodes[0].rawValue;
+            const now = Date.now();
+            if(code !== lastCode || now - lastTime > 2000){
+              lastCode = code; lastTime = now;
+              onDetect(code);
+            }
+          }
+        }
+      } catch(e){}
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+  } else {
+    // fallback: canvas + jsQR (CDN)
+    loadJsQR(() => startCanvasScan(vid));
   }
-  const entry = {
-    seq: scannedAssets.length + 1,
-    assetNo: data,
-    building: selectedBuilding,
-    floor: selectedFloor,
-    room: selectedRoom,
-    scannedAt: new Date().toLocaleString('ko-KR')
+}
+
+function loadJsQR(cb){
+  if(window.jsQR){ cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js';
+  s.onload = cb;
+  document.head.appendChild(s);
+}
+
+function startCanvasScan(vid){
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const loop = () => {
+    if(!stream) return;
+    if(vid.readyState >= 2 && vid.videoWidth > 0){
+      canvas.width = vid.videoWidth; canvas.height = vid.videoHeight;
+      ctx.drawImage(vid, 0, 0);
+      const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+      const code = jsQR(img.data, img.width, img.height, { inversionAttempts:'dontInvert' });
+      if(code && code.data){
+        const now = Date.now();
+        if(code.data !== lastCode || now - lastTime > 2000){
+          lastCode = code.data; lastTime = now;
+          onDetect(code.data);
+        }
+      }
+    }
+    rafId = requestAnimationFrame(loop);
   };
-  scannedAssets.push(entry);
-  updateScanUI(entry);
-  if (navigator.vibrate) navigator.vibrate(60);
-  showToast(`✅ ${data}`);
+  rafId = requestAnimationFrame(loop);
 }
 
-function updateScanUI(entry) {
-  document.getElementById('scan-count-num').textContent = scannedAssets.length;
-  const list = document.getElementById('scanned-list');
-  const item = document.createElement('div');
-  item.className = 'scan-item'; item.id = `item-${entry.seq}`;
-  item.innerHTML = `<span class="asset-no">${entry.assetNo}</span><span class="scan-seq">#${entry.seq}</span><button class="del-btn" onclick="deleteAsset(${entry.seq})">✕</button>`;
-  list.prepend(item);
+function onDetect(data){
+  if(assets.find(a=>a.no===data)){ toast('⚠️ 이미 스캔됨: '+data, 'warn'); return; }
+  const entry = { seq: assets.length+1, no: data, building: bldg, floor, room, at: new Date().toLocaleString('ko-KR') };
+  assets.push(entry);
+  // UI 업데이트
+  document.getElementById('cnt').textContent = assets.length;
+  const li = document.createElement('div'); li.className='s-item'; li.id='si-'+entry.seq;
+  li.innerHTML = `<span class="anum">${data}</span><span class="aseq">#${entry.seq}</span><button class="del" onclick="delItem(${entry.seq})">✕</button>`;
+  document.getElementById('ilist').prepend(li);
+  if(navigator.vibrate) navigator.vibrate(60);
+  toast('✅ '+data, 'ok');
 }
 
-function deleteAsset(seq) {
-  scannedAssets = scannedAssets.filter(a => a.seq !== seq);
-  const el = document.getElementById(`item-${seq}`);
-  if (el) el.remove();
-  document.getElementById('scan-count-num').textContent = scannedAssets.length;
-  showToast('삭제되었습니다', 'warning');
+function delItem(seq){
+  assets = assets.filter(a=>a.seq!==seq);
+  const el = document.getElementById('si-'+seq); if(el) el.remove();
+  document.getElementById('cnt').textContent = assets.length;
+  toast('삭제됨', 'warn');
 }
 
-// ── Summary ──
-function renderSummary() {
-  document.getElementById('sum-building').textContent = selectedBuilding;
-  document.getElementById('sum-floor').textContent = selectedFloor;
-  document.getElementById('sum-room').textContent = selectedRoom;
-  document.getElementById('sum-total').textContent = scannedAssets.length;
-  const elapsed = scanStartTime ? Math.floor((new Date() - scanStartTime) / 1000) : 0;
-  document.getElementById('sum-time').textContent = `${Math.floor(elapsed/60)}분 ${elapsed%60}초`;
-  const body = document.getElementById('summary-list-body');
-  body.innerHTML = '';
-  scannedAssets.forEach(a => {
-    const row = document.createElement('div'); row.className = 'summary-row';
-    row.innerHTML = `<span class="idx">${a.seq}</span><span class="asset">${a.assetNo}</span><span class="time">${a.scannedAt.split(' ')[1]||a.scannedAt}</span>`;
-    body.appendChild(row);
+// ── 요약 ──
+function renderSummary(){
+  document.getElementById('sB').textContent = bldg;
+  document.getElementById('sF').textContent = floor;
+  document.getElementById('sR').textContent = room;
+  document.getElementById('sTotal').textContent = assets.length;
+  const sec = startTime ? Math.floor((new Date()-startTime)/1000) : 0;
+  document.getElementById('sTime').textContent = `${Math.floor(sec/60)}분 ${sec%60}초`;
+  const body = document.getElementById('sum-body'); body.innerHTML='';
+  assets.forEach(a=>{
+    const r=document.createElement('div'); r.className='sum-row';
+    const t = a.at.split(' '); const timeStr = t.length>1 ? t[1] : a.at;
+    r.innerHTML=`<span class="sum-idx">${a.seq}</span><span class="sum-asset">${a.no}</span><span class="sum-time">${timeStr}</span>`;
+    body.appendChild(r);
   });
 }
 
-// ── Excel ──
-function exportExcel() {
-  if (!scannedAssets.length) { showToast('스캔된 자산이 없습니다', 'error'); return; }
+// ── 엑셀 저장 ──
+function exportExcel(){
+  if(!assets.length){ toast('스캔된 자산이 없습니다','err'); return; }
   const wb = XLSX.utils.book_new();
-  const wsData = [['순번','자산번호','건물명','층수','장소','스캔일시']];
-  scannedAssets.forEach(a => wsData.push([a.seq, a.assetNo, a.building, a.floor, a.room, a.scannedAt]));
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch:6},{wch:20},{wch:12},{wch:8},{wch:14},{wch:22}];
-  XLSX.utils.book_append_sheet(wb, ws, '자산스캔결과');
-  const ws2Data = [['항목','내용'],['스캔일시',new Date().toLocaleString('ko-KR')],['건물명',selectedBuilding],['층수',selectedFloor],['장소',selectedRoom],['총스캔수',scannedAssets.length]];
-  const ws2 = XLSX.utils.aoa_to_sheet(ws2Data);
-  ws2['!cols'] = [{wch:16},{wch:24}];
-  XLSX.utils.book_append_sheet(wb, ws2, '스캔정보');
-  const now = new Date();
-  const d = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-  XLSX.writeFile(wb, `자산스캔_${selectedBuilding}_${selectedFloor}_${d}.xlsx`);
-  showToast('📥 엑셀 저장 완료!');
+  const rows = [['순번','자산번호','건물명','층수','장소','스캔일시']];
+  assets.forEach(a=>rows.push([a.seq,a.no,a.building,a.floor,a.room,a.at]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:6},{wch:20},{wch:12},{wch:8},{wch:14},{wch:22}];
+  XLSX.utils.book_append_sheet(wb,ws,'자산스캔결과');
+  const ws2 = XLSX.utils.aoa_to_sheet([['항목','내용'],['스캔일시',new Date().toLocaleString('ko-KR')],['건물명',bldg],['층수',floor],['장소',room],['총스캔수',assets.length]]);
+  ws2['!cols']=[{wch:16},{wch:24}];
+  XLSX.utils.book_append_sheet(wb,ws2,'스캔정보');
+  const d=new Date(); const ds=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  XLSX.writeFile(wb,`자산스캔_${bldg}_${floor}_${ds}.xlsx`);
+  toast('📥 저장 완료!','ok');
 }
 
-// ── Toast ──
-function showToast(msg, type='success') {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = `toast ${type} show`;
-  setTimeout(() => t.classList.remove('show'), 2200);
+// ── 토스트 ──
+function toast(msg, type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className=`toast ${type} show`;
+  setTimeout(()=>el.classList.remove('show'),2200);
 }
-
-// ── Init ──
-loadLocationData();
 </script>
 </body>
 </html>
